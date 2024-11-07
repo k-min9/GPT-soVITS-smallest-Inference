@@ -12,12 +12,17 @@
 /build
 /legacy
 /archive
+/files
+/pretrained_models
 
 *.pth
 *.gguf
 *.onnx
 *.spec
 *.log
+*.ckpt
+*.exe
+*.wav
 
 output.wav
 temp.py
