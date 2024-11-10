@@ -1,5 +1,11 @@
-# 역할모르겠음
-is_half = False
+# pyinstaller 패키징용 호출
+import eunjeon
+import g2p_en
+import g2pk2
+import inflect
+import jamo
+import py3langid
+import wordsegment
 
 # 변수 정리
 version = 'v2'
@@ -248,7 +254,7 @@ def get_first(text):
     text = re.split(pattern, text)[0].strip()
     return text
 
-from text import chinese
+# from text import chinese
 def get_phones_and_bert(text,language,version,final=False):
     if language in {"en", "all_zh", "all_ja", "all_ko", "all_yue"}:
         language = language.replace("all_","")
@@ -263,14 +269,14 @@ def get_phones_and_bert(text,language,version,final=False):
         if language == "zh":
             if re.search(r'[A-Za-z]', formattext):
                 formattext = re.sub(r'[a-z]', lambda x: x.group(0).upper(), formattext)
-                formattext = chinese.mix_text_normalize(formattext)
+                # formattext = chinese.mix_text_normalize(formattext)
                 return get_phones_and_bert(formattext,"zh",version)
             else:
                 phones, word2ph, norm_text = clean_text_inf(formattext, language, version)
                 bert = get_bert_feature(norm_text, word2ph).to(device)
         elif language == "yue" and re.search(r'[A-Za-z]', formattext):
                 formattext = re.sub(r'[a-z]', lambda x: x.group(0).upper(), formattext)
-                formattext = chinese.mix_text_normalize(formattext)
+                # formattext = chinese.mix_text_normalize(formattext)
                 return get_phones_and_bert(formattext,"yue",version)
         else:
             phones, word2ph, norm_text = clean_text_inf(formattext, language, version)
@@ -504,10 +510,10 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language,
     # yield hps.data.sampling_rate, (np.concatenate(audio_opt, 0) * 32768).astype(
     #     np.int16
     # )
-
-    # sf.write(io_buffer, (np.concatenate(audio_opt, 0) * 32768).astype(np.int16), 22050, format='wav')
-    sf.write("out2.wav",(np.concatenate(audio_opt, 0) * 32768).astype(np.int16), 32000)
-    # sf.write("out2.wav",np.concatenate(audio_opt, 0), 22050)
+    
+    sf.write("./output.wav",(np.concatenate(audio_opt, 0) * 32768).astype(np.int16), 32000)
+    if os.path.exists('./files/'):  # files에도 필요한 경우가 있음(API 전송용)
+        sf.write("./files/output.wav",(np.concatenate(audio_opt, 0) * 32768).astype(np.int16), 32000)
     
     print('get_tts_wav end')
 
@@ -686,8 +692,10 @@ if __name__ == '__main__':
     prompt_language = 'ja'
     text_a = '안녕? 난 민구라고 해'
     text_a = '테스트중! 테스트중.'
-    text_a = '오케이!'
-    # text_a = 'python 사용 가능!'
+    text_a = 'API 사용 가능한가요?'
+    text_a = 'Only English Spokened'
+    # text_a = '오케이!'
+    # text_a = 'python can be spoken'
     # text_a = 'get some rest sensei! 안녕하세요?'
     text_language = 'ko'
     # text_a = 'メリークリスマス。プレゼントもちゃんと用意しましたよ'
