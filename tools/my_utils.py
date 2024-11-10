@@ -7,8 +7,8 @@ import pandas as pd
 # i18n = I18nAuto(language=os.environ.get('language','Auto'))
 
 def load_audio(file, sr):
-    print('load_audio file', file)
-    print('load_audio sr', sr)
+    # print('load_audio file', file)
+    # print('load_audio sr', sr)  # 32000
     # sr = 22050
     try:
         # https://github.com/openai/whisper/blob/main/whisper/audio.py#L26
@@ -19,9 +19,7 @@ def load_audio(file, sr):
             raise RuntimeError(
                 "You input a wrong audio path that does not exists, please fix it!"
             )
-        print('load_audio clean_path', file)
-        # stream = ffmpeg.input(file, threads=0)
-        # stream = ffmpeg.output("-", format="f32le", acodec="pcm_f32le", ac=1, ar=sr)
+        # print('load_audio clean_path', file)
         out, _ = (
             ffmpeg.input(file, threads=0)
             .output("-", format="f32le", acodec="pcm_f32le", ac=1, ar=sr)
