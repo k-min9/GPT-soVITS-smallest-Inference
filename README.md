@@ -2,18 +2,34 @@
 
 ## 개요
 
-- git pu
+- GPT-soVITS v2를 실행하기 위한 최소 라이브러리 및 함수 세팅
+- 백엔드 통신을 통한 음성합성 기능
 
-## 환경 기록
+## 환경 세팅
 
-py -3.9 -m venv venv
+- venv, library 세팅
 
-pip install einops
-pip install LangSegment>=0.2.0
-pip install pyinstaller
+    ``` bash
+        py -3.9 -m venv venv
 
-eunjeon 이 프로그램 호출로 install 되어버림 (Using cached eunjeon-0.4.0-cp310-cp310-win_amd64.whl)
-
-## 빌드
-
-pyinstaller --onedir inference_webui.py -n main --noconsole --contents-directory=files --noconfirm # 메인 프로그램
+        pip install einops
+        pip install LangSegment==0.3.5
+        pip install pyinstaller
+        pip install pytorch-lightning
+        pip install soundfile
+        pip install eunjeon
+        pip install transformers
+        pip install numpy==1.23.4
+        pip install scipy
+        pip install librosa==0.9.2
+        pip install matplotlib
+        pip install pyopenjtalk==0.3.4
+        pip install jamo
+        pip install ko_pron
+        pip install g2p_en
+        pip install g2pk2
+        pip install wordsegment
+        pip install ffmpeg-python
+        pip install numba==0.56.4
+        pip install pandas
+    ```
