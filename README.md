@@ -33,3 +33,23 @@
         pip install numba==0.56.4
         pip install pandas
     ```
+
+- [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)의 해당항목 이동
+  - 최상단에 ffmpeg.exe, ffprobe.exe 세팅
+  - GPT_weights_v2/로 ckpt 이동
+  - SoVITS_weights_v2/로 pth 이동
+  - pretrained_models 이동
+
+## 빌드
+
+- pyinstaller --onedir main.py -n main --noconsole --contents-directory=files --noconfirm # 메인 프로그램
+- 몇몇 라이브러리 이동 필요
+
+## 트러블 슈팅
+
+- torch jit (torch\jit\_script.py)
+  - @torch.jit.script > @torch.jit._script_if_tracing
+- text 의 cleaner에 import 추가하여 강제 로딩
+  - import text.japanese  
+    import text.korean  
+    import text.english 추가  
