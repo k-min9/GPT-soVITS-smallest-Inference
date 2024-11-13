@@ -32,6 +32,8 @@
         pip install ffmpeg-python
         pip install numba==0.56.4
         pip install pandas
+
+        pip install flask
     ```
 
 - [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)의 해당항목 이동
@@ -43,6 +45,7 @@
 ## 빌드
 
 - pyinstaller --onedir main.py -n main --noconsole --contents-directory=files --noconfirm # 메인 프로그램
+- pyinstaller --onedir tts_backend.py -n tts_server --noconsole --contents-directory=files --noconfirm # 서버 인터페이스
 - 몇몇 라이브러리 이동 필요
 
 ## 트러블 슈팅
