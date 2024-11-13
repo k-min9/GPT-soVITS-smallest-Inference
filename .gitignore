@@ -23,6 +23,7 @@
 *.ckpt
 *.exe
 *.wav
+*.txt
 
 output.wav
 temp.py
