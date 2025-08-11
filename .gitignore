@@ -24,6 +24,8 @@
 *.exe
 *.wav
 *.txt
+/legacy
+/voices
 
 output.wav
 temp.py
