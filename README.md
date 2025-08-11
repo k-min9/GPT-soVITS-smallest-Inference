@@ -12,6 +12,7 @@
     ``` bash
         py -3.9 -m venv venv
 
+        pip install torch==2.5.1+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
         pip install einops
         pip install LangSegment==0.3.5
         pip install pyinstaller
@@ -32,8 +33,11 @@
         pip install ffmpeg-python
         pip install numba==0.56.4
         pip install pandas
+        pip install pyngrok
+        pip install supabase 
 
         pip install flask
+        pip install waitress  # WSGI for production
     ```
 
 - [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)의 해당항목 이동
@@ -45,12 +49,13 @@
 ## 빌드
 
 - pyinstaller --onedir main.py -n main --noconsole --contents-directory=files --noconfirm # 메인 프로그램
-- pyinstaller --onedir tts_backend.py -n tts_server --noconsole --contents-directory=files --noconfirm # 서버 인터페이스
+- pyinstaller --onedir tts_backend.py -n tts_server --contents-directory=files --noconfirm # 서버 인터페이스
 - 몇몇 라이브러리 이동 필요
 
 ## 트러블 슈팅
 
-- torch jit (torch\jit\_script.py)
+- torch jit (torch\jit\_script.py) 이슈
+  - AR 폴더 변경사항
   - @torch.jit.script > @torch.jit._script_if_tracing
 - text 의 cleaner에 import 추가하여 강제 로딩
   - import text.japanese  

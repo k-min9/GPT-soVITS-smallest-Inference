@@ -26,6 +26,9 @@
 *.txt
 /legacy
 /voices
+/log
+
+kei.py
 
 output.wav
 temp.py
