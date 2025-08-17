@@ -1,7 +1,7 @@
 /venv
 /output
 /__pycache__
-*/__pycache__
+**/__pycache__
 */build
 /model
 /image
@@ -24,6 +24,7 @@
 *.exe
 *.wav
 *.txt
+*.pyc
 /legacy
 /voices
 /log

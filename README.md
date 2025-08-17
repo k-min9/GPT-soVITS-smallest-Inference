@@ -10,7 +10,7 @@
 - venv, library 세팅
 
     ``` bash
-        py -3.9 -m venv venv
+        py -3.10 -m venv venv
 
         pip install torch==2.5.1+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
         pip install einops
@@ -19,12 +19,12 @@
         pip install pytorch-lightning
         pip install soundfile
         pip install eunjeon
-        pip install transformers
+        pip install transformers==4.46.2
         pip install numpy==1.23.4
         pip install scipy
         pip install librosa==0.9.2
         pip install matplotlib
-        pip install pyopenjtalk==0.3.4
+        pip install pyopenjtalk==0.3.4  # cmake needed
         pip install jamo
         pip install ko_pron
         pip install g2p_en
