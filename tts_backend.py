@@ -2,7 +2,7 @@ import voice_inference
 import util_pyngrok
 
 # Server-Flask
-from flask import Flask, Response, request, jsonify, send_file
+from flask import Flask, Response, request, jsonify, send_file, abort
 app = Flask(__name__)
 
 # 한국어 텍스트를 입력받아 변환
@@ -16,7 +16,7 @@ def synthesize_sound():
         text = text.replace('SCHALE', 'シャーレ')
         return text   
     
-    if state.get_DEV_MODE():
+    if True:  # state.get_DEV_MODE():
         print('###getSound request', request.json)
     text = request.json.get('text', '안녕하십니까.')
     char = request.json.get('char', 'arona')
