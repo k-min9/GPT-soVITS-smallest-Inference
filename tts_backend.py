@@ -3,6 +3,7 @@ import util_pyngrok
 
 # Server-Flask
 from flask import Flask, Response, request, jsonify, send_file, abort
+from waitress import serve
 app = Flask(__name__)
 
 # 한국어 텍스트를 입력받아 변환
@@ -50,3 +51,4 @@ if __name__ == '__main__':
     # Server run
     tts_port = 5000
     app.run( host='0.0.0.0', port=tts_port)
+    # serve(app, host="0.0.0.0", port=5000)
