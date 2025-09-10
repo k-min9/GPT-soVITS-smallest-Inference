@@ -6,6 +6,16 @@ from flask import Flask, Response, request, jsonify, send_file, abort
 from waitress import serve
 app = Flask(__name__)
 
+# Health check endpoint - 접근성을 낮춘 경로
+# 차후 공격시 Rate Limiting + 큐 시스템 + 캐싱
+@app.route('/alive', methods=['GET'])
+def health_check():
+    return jsonify({
+        'status': 'healthy',
+        'service': 'tts-voice-service',
+        'timestamp': int(__import__('time').time())
+    }), 200
+
 # 한국어 텍스트를 입력받아 변환
 @app.route('/getSound/jp', methods=['POST'])  # legacy
 @app.route('/getSound/ko', methods=['POST'])  # legacy
@@ -45,7 +55,7 @@ if __name__ == '__main__':
     nltk.download('averaged_perceptron_tagger_eng')
     
     # preloading
-    voice_inference.synthesize_char('noa', '안녕하세요!', audio_language='ja')
+    voice_inference.synthesize_char('arona', '안녕하세요!', audio_language='ja')
     util_pyngrok.start_ngrok(id='dev_voice')
     
     # Server run

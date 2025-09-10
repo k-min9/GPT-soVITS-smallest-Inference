@@ -465,7 +465,7 @@ def synthesize_char(char_name, audio_text, audio_language='ja', speed=1):
     global gpt_path, sovits_path
     
     prompt_info = voice_management.get_prompt_info_from_name(char_name)  # Todo : 없을때의 Try Catch
-    # print(prompt_info)
+    print(prompt_info)
     
     prompt_language = prompt_info['language'] # 'ja'
     ref_wav_path = prompt_info['wav_path'] #'./voices/noa.wav'
@@ -566,7 +566,7 @@ if __name__ == '__main__':
     
     print(audio_text)
     
-    actor = 'seia'
+    actor = 'mari'
 
     prompt_info = voice_management.get_prompt_info_from_name(actor)  # Todo : 없을때의 Try Catch
     prompt_language = prompt_info['language'] # 'ja'
