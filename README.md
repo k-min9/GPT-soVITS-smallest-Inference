@@ -36,6 +36,15 @@
         pip install pyngrok
         pip install supabase 
 
+        # Backserver 추가(여기서부터 torch 붙음)
+        pip install silero-vad
+        pip install faster-whisper
+        pip install pyannote-audio
+
+        pip install torch==2.5.1+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
+        pip install torchaudio==2.5.1
+        pip install torchvision==0.20.1+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
+
         pip install flask
         pip install waitress  # WSGI for production
     ```
