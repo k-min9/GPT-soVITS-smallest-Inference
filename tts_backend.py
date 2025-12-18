@@ -291,5 +291,5 @@ if __name__ == '__main__':
     
     # Server run
     tts_port = 5000
-    app.run( host='0.0.0.0', port=tts_port)
-    # serve(app, host="0.0.0.0", port=5000)
+    # app.run( host='0.0.0.0', port=tts_port)
+    serve(app, host="0.0.0.0", port=tts_port)

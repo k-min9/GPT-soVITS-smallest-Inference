@@ -60,7 +60,8 @@
 ## 빌드
 
 - pyinstaller --onedir main.py -n main --noconsole --contents-directory=files --noconfirm # 메인 프로그램
-- pyinstaller --onedir tts_backend.py -n tts_server --contents-directory=files --noconfirm # 서버 인터페이스
+- pyinstaller --onedir tts_backend.py -n server --contents-directory=files_server --noconfirm # 서버 인터페이스
+- --icon=./icon_plana.ico
 - 몇몇 라이브러리 이동 필요
 
 ## 트러블 슈팅
