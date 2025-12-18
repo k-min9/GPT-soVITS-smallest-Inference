@@ -51,8 +51,10 @@
 
 - [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)의 해당항목 이동
   - 최상단에 ffmpeg.exe, ffprobe.exe 세팅
-  - GPT_weights_v2/로 ckpt 이동
-  - SoVITS_weights_v2/로 pth 이동
+  - voices 이동
+    - GPT_weights_v2/로 ckpt 이동
+    - SoVITS_weights_v2/로 pth 이동
+  - venv의 LangSegment, pyopenjtalk 이동
   - pretrained_models 이동
 
 ## 빌드
