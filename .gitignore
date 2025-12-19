@@ -29,6 +29,8 @@
 /voices
 /log
 /model
+/test
+.vscode
 
 kei.py
 

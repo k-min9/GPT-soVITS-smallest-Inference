@@ -35,6 +35,7 @@
         pip install pandas
         pip install pyngrok
         pip install supabase 
+        pip install pynvml
 
         # Backserver 추가(여기서부터 torch 붙음)
         pip install silero-vad
