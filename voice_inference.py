@@ -56,15 +56,34 @@ device = 'cuda'
 vq_models = {}
 t2s_models = {}
 
-tokenizer = AutoTokenizer.from_pretrained(bert_path)
-bert_model = AutoModelForMaskedLM.from_pretrained(bert_path)
-if is_half == True:
-    bert_model = bert_model.half().to(device)
-else:
-    bert_model = bert_model.to(device)
+# Lazy Loading: BERT 모델은 중국어 사용 시에만 로드
+tokenizer = None
+bert_model = None
+
+def load_bert_model():
+    """중국어 처리를 위한 BERT 모델을 Lazy Loading"""
+    global tokenizer, bert_model
+    
+    if bert_model is not None:
+        return  # 이미 로드됨
+    
+    print("🔄 Loading BERT model for Chinese language support...")
+    tokenizer = AutoTokenizer.from_pretrained(bert_path)
+    bert_model = AutoModelForMaskedLM.from_pretrained(bert_path)
+    
+    if is_half == True:
+        bert_model = bert_model.half().to(device)
+    else:
+        bert_model = bert_model.to(device)
+    
+    print("✅ BERT model loaded successfully!")
 
 
 def get_bert_feature(text, word2ph):
+    """중국어 BERT feature 추출 - Lazy Loading 적용"""
+    # 중국어 처리를 위해 BERT 모델 로드 (최초 1회만)
+    load_bert_model()
+    
     with torch.no_grad():
         inputs = tokenizer(text, return_tensors="pt")
         for i in inputs:
@@ -190,10 +209,13 @@ def clean_text_inf(text, language, version):
 
 dtype=torch.float16 if is_half == True else torch.float32
 def get_bert_inf(phones, word2ph, norm_text, language):
+    """언어별 BERT feature 생성 - 중국어만 실제 BERT 사용, 나머지는 zero tensor"""
     language=language.replace("all_","")
     if language == "zh":
+        # 중국어: BERT 모델 사용 (Lazy Loading)
         bert = get_bert_feature(norm_text, word2ph).to(device)#.to(dtype)
     else:
+        # 일본어/한국어/영어: zero tensor 사용 (VRAM 절약)
         bert = torch.zeros(
             (1024, len(phones)),
             dtype=torch.float16 if is_half == True else torch.float32,
