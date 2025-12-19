@@ -280,16 +280,148 @@ def speech_diarization_filter():
             "error_type": type(e).__name__
         }), 500
 
+# ===== 캐시 관리 API =====
+
+@app.route('/cache/clear_all', methods=['POST'])
+def cache_clear_all():
+    """모든 캐시된 actor 모델 제거"""
+    try:
+        voice_inference.clear_all_cache()
+        return jsonify({
+            "status": "success",
+            "message": "All cached models cleared"
+        }), 200
+    except Exception as e:
+        print(f"[ERROR] /cache/clear_all: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/cache/remain', methods=['POST'])
+def cache_remain():
+    """최근 사용된 N개 actor만 남기고 나머지 제거"""
+    try:
+        count = request.json.get('count', 2)
+        count = int(count)
+        if count < 0:
+            return jsonify({
+                "status": "error",
+                "message": "count must be non-negative"
+            }), 400
+        
+        voice_inference.remain_n_actors(count)
+        return jsonify({
+            "status": "success",
+            "message": f"Kept only {count} most recent actors",
+            "count": count
+        }), 200
+    except Exception as e:
+        print(f"[ERROR] /cache/remain: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/cache/remain/<int:n>', methods=['GET'])
+def cache_remain_get(n):
+    """최근 사용된 N개 actor만 남기고 나머지 제거 (테스트용)"""
+    try:
+        if n < 0:
+            return jsonify({
+                "status": "error",
+                "message": "n must be non-negative"
+            }), 400
+        
+        voice_inference.remain_n_actors(n)
+        return jsonify({
+            "status": "success",
+            "message": f"Kept only {n} most recent actors",
+            "count": n
+        }), 200
+    except Exception as e:
+        print(f"[ERROR] /cache/remain/{n}: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/cache/load', methods=['POST'])
+def cache_load():
+    """특정 actor 모델을 미리 로딩"""
+    try:
+        actor = request.json.get('actor', None)
+        if not actor:
+            return jsonify({
+                "status": "error",
+                "message": "actor parameter is required"
+            }), 400
+        
+        voice_inference.preload_actor(actor)
+        return jsonify({
+            "status": "success",
+            "message": f"Actor {actor} loaded",
+            "actor": actor
+        }), 200
+    except Exception as e:
+        print(f"[ERROR] /cache/load: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/cache/load/<actor>', methods=['GET'])
+def cache_load_get(actor):
+    """특정 actor 모델을 미리 로딩 (테스트용)"""
+    try:
+        voice_inference.preload_actor(actor)
+        return jsonify({
+            "status": "success",
+            "message": f"Actor {actor} loaded",
+            "actor": actor
+        }), 200
+    except Exception as e:
+        print(f"[ERROR] /cache/load/{actor}: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/cache/status', methods=['GET'])
+def cache_status():
+    """현재 캐시 상태 조회"""
+    try:
+        cached_vq = voice_inference.vq_models.keys()
+        cached_t2s = voice_inference.t2s_models.keys()
+        vram_info = voice_inference.get_vram_info()
+        
+        return jsonify({
+            "status": "success",
+            "cached_actors": cached_vq,
+            "count": len(cached_vq),
+            "max_cache_size": voice_inference.MAX_CACHED_ACTORS,
+            "vram": vram_info
+        }), 200
+    except Exception as e:
+        print(f"[ERROR] /cache/status: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
 if __name__ == '__main__':
     # TODO : 선행세팅, main에서 local화 진행시 같이 진행
     import nltk
     nltk.download('averaged_perceptron_tagger_eng')
+    
+    # 로그 시스템 초기화
+    voice_inference.init_logging()
     
     # preloading
     voice_inference.synthesize_char('arona', '안녕하세요!', audio_language='ja')
     util_pyngrok.start_ngrok(id='dev_voice')
     
     # Server run
-    tts_port = 5000
+    tts_port = 5010
     # app.run( host='0.0.0.0', port=tts_port)
     serve(app, host="0.0.0.0", port=tts_port)

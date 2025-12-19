@@ -53,8 +53,173 @@ from tools.my_utils import load_audio
 #     device = 'cpu'
 device = 'cuda'
 
-vq_models = {}
-t2s_models = {}
+# LRU Cache Configuration
+MAX_CACHED_ACTORS = 10
+
+# Logging Configuration
+LOG_FILE_PATH = None
+VRAM_AVAILABLE = False
+
+def init_logging():
+    """로그 시스템 초기화"""
+    global LOG_FILE_PATH, VRAM_AVAILABLE
+    
+    # VRAM 측정 기능 확인
+    try:
+        import pynvml
+        pynvml.nvmlInit()
+        VRAM_AVAILABLE = True
+        print("[LOG] VRAM monitoring enabled")
+    except:
+        VRAM_AVAILABLE = False
+        print("[LOG] VRAM monitoring not available")
+    
+    # 로그 파일 생성
+    os.makedirs('./log', exist_ok=True)
+    log_filename = datetime.now().strftime("%Y%m%d_%H%M%S") + ".txt"
+    LOG_FILE_PATH = os.path.join('./log', log_filename)
+    print(f"[LOG] Log file created: {LOG_FILE_PATH}")
+
+def get_vram_info():
+    """VRAM 사용량 조회"""
+    if not VRAM_AVAILABLE:
+        return "N/A"
+    
+    try:
+        import pynvml
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        used_gb = info.used / (1024 ** 3)
+        total_gb = info.total / (1024 ** 3)
+        return f"{used_gb:.1f}GB/{total_gb:.1f}GB"
+    except:
+        return "N/A"
+
+def log_cache_access(actor, action=None):
+    """캐시 접근 로깅"""
+    if LOG_FILE_PATH is None:
+        return
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # 현재 캐시된 actor 목록 (최근 사용 순서)
+    cached_actors = vq_models.keys()  # t2s_models와 동일하게 관리됨
+    actors_str = ",".join(cached_actors)
+    
+    # VRAM 정보
+    vram_info = get_vram_info()
+    
+    # ACTION 결정
+    if action is None:
+        action = f"{actor.upper()} CALLED"
+    
+    # 로그 기록
+    log_line = f"[{timestamp}] {action} | actors=[{actors_str}] | VRAM={vram_info}\n"
+    
+    try:
+        with open(LOG_FILE_PATH, 'a', encoding='utf-8') as f:
+            f.write(log_line)
+    except Exception as e:
+        print(f"[LOG ERROR] Failed to write log: {e}")
+
+def clear_all_cache():
+    """모든 캐시 제거"""
+    vq_models.clear()
+    t2s_models.clear()
+    log_cache_access("", "CLEAR ALL")
+    print("[CACHE] All models cleared")
+
+def remain_n_actors(n):
+    """최근 사용된 N개 actor만 남기고 나머지 제거"""
+    vq_models.remove_oldest_n(n)
+    t2s_models.remove_oldest_n(n)
+    log_cache_access("", f"REMAIN {n}")
+    print(f"[CACHE] Kept only {n} most recent actors")
+
+def preload_actor(actor):
+    """특정 actor 모델을 미리 로딩"""
+    if actor not in vq_models:
+        voice_info = voice_management.get_voice_info_from_name(actor)
+        sovits_path = voice_info['sovits_path']
+        change_sovits_weights(actor, sovits_path)
+    
+    if actor not in t2s_models:
+        voice_info = voice_management.get_voice_info_from_name(actor)
+        gpt_path = voice_info['gpt_path']
+        change_gpt_weights(actor, gpt_path)
+    
+    # 캐시 hit - 최근 사용으로 업데이트
+    vq_models.get(actor)
+    t2s_models.get(actor)
+    
+    log_cache_access(actor, f"{actor.upper()} LOADED")
+    print(f"[CACHE] Actor {actor} preloaded")
+
+class LRUModelCache:
+    """LRU(Least Recently Used) 기반 모델 캐시 관리 클래스"""
+    def __init__(self, max_size=10, cache_type="unknown"):
+        from collections import OrderedDict
+        self.cache = OrderedDict()
+        self.max_size = max_size
+        self.cache_type = cache_type  # 로깅용
+    
+    def get(self, key):
+        """캐시에서 모델 조회. 조회 시 최근 사용으로 이동"""
+        if key not in self.cache:
+            return None
+        # 최근 사용 순서로 이동
+        self.cache.move_to_end(key)
+        return self.cache[key]
+    
+    def put(self, key, model):
+        """캐시에 모델 추가. max_size 초과 시 가장 오래된 모델 제거"""
+        # 이미 존재하면 업데이트하고 최신으로 이동
+        if key in self.cache:
+            self.cache.move_to_end(key)
+            self.cache[key] = model
+            return
+        
+        # max_size 초과 시 가장 오래된 항목 제거
+        if len(self.cache) >= self.max_size:
+            oldest_key, oldest_model = self.cache.popitem(last=False)
+            print(f"[LRU] Evicting {self.cache_type} model: {oldest_key}")
+            del oldest_model
+            torch.cuda.empty_cache()
+        
+        # 새 모델 추가
+        self.cache[key] = model
+    
+    def keys(self):
+        """현재 캐시된 키 목록 반환 (최근 사용 순서)"""
+        return list(self.cache.keys())
+    
+    def clear(self):
+        """캐시의 모든 모델 제거"""
+        for key, model in self.cache.items():
+            del model
+        self.cache.clear()
+        torch.cuda.empty_cache()
+    
+    def remove_oldest_n(self, keep_count):
+        """최근 사용된 keep_count개만 남기고 나머지 제거"""
+        current_count = len(self.cache)
+        if current_count <= keep_count:
+            return
+        
+        remove_count = current_count - keep_count
+        for _ in range(remove_count):
+            oldest_key, oldest_model = self.cache.popitem(last=False)
+            print(f"[LRU] Removing {self.cache_type} model: {oldest_key}")
+            del oldest_model
+        
+        torch.cuda.empty_cache()
+    
+    def __contains__(self, key):
+        """'in' 연산자 지원"""
+        return key in self.cache
+
+vq_models = LRUModelCache(max_size=MAX_CACHED_ACTORS, cache_type="SoVITS")
+t2s_models = LRUModelCache(max_size=MAX_CACHED_ACTORS, cache_type="GPT")
 
 # Lazy Loading: BERT 모델은 중국어 사용 시에만 로드
 tokenizer = None
@@ -136,8 +301,11 @@ else:
 
 def change_sovits_weights(actor, sovits_path,prompt_language=None,text_language=None):
     global hps, version
-    if actor in vq_models:
-        return vq_models[actor]
+    
+    # 캐시에서 모델 조회
+    cached_model = vq_models.get(actor)
+    if cached_model is not None:
+        return cached_model
     
     device = 'cuda'
     dict_s2 = torch.load(sovits_path, map_location="cpu")
@@ -149,41 +317,52 @@ def change_sovits_weights(actor, sovits_path,prompt_language=None,text_language=
     else:
         hps.model.version = "v2"
     version = hps.model.version
-    vq_models[actor] = SynthesizerTrn(
+    
+    model = SynthesizerTrn(
         hps.data.filter_length // 2 + 1,
         hps.train.segment_size // hps.data.hop_length,
         n_speakers=hps.data.n_speakers,
         **hps.model
     )
     if ("pretrained" not in sovits_path):
-        del vq_models[actor].enc_q
+        del model.enc_q
     if is_half == True:
-        vq_models[actor] = vq_models[actor].half().to(device)
+        model = model.half().to(device)
     else:
-        vq_models[actor] = vq_models[actor].to(device)
-    vq_models[actor].eval()
-    print(vq_models[actor].load_state_dict(dict_s2["weight"], strict=False))
-    return vq_models[actor]
+        model = model.to(device)
+    model.eval()
+    print(model.load_state_dict(dict_s2["weight"], strict=False))
+    
+    # 캐시에 저장
+    vq_models.put(actor, model)
+    return model
 
 def change_gpt_weights(actor, gpt_path):
     global hz, max_sec, config
-    if actor in t2s_models:
-        return t2s_models[actor]
+    
+    # 캐시에서 모델 조회
+    cached_model = t2s_models.get(actor)
+    if cached_model is not None:
+        return cached_model
     
     device = 'cuda'
     hz = 50
     dict_s1 = torch.load(gpt_path, map_location="cpu")
     config = dict_s1["config"]
     max_sec = config["data"]["max_sec"]
-    t2s_models[actor] = Text2SemanticLightningModule(config, "****", is_train=False)
-    t2s_models[actor].load_state_dict(dict_s1["weight"])
+    
+    model = Text2SemanticLightningModule(config, "****", is_train=False)
+    model.load_state_dict(dict_s1["weight"])
     if is_half == True:
-        t2s_models[actor] = t2s_models[actor].half()
-    t2s_models[actor] = t2s_models[actor].to(device)
-    t2s_models[actor].eval()
-    # total = sum([param.nelement() for param in t2s_models[actor].parameters()])
+        model = model.half()
+    model = model.to(device)
+    model.eval()
+    # total = sum([param.nelement() for param in model.parameters()])
     # print("Number of parameter: %.2fM" % (total / 1e6))
-    return t2s_models[actor]
+    
+    # 캐시에 저장
+    t2s_models.put(actor, model)
+    return model
 
 def get_spepc(hps, filename):
     audio = load_audio(filename, int(hps.data.sampling_rate))
@@ -328,7 +507,7 @@ cache= {}
 tts_idx = 0  # 전송중 파일 생성으로 인한 충돌 방지용
 def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language, top_k=15, top_p=1, temperature=1, ref_free =False, speed=1, if_freeze=False,inp_refs=None, actor='arona'):
     global cache, tts_idx
-       
+    
     # 캐릭터가 없는 경우 모델 로딩
     if actor not in vq_models:
         voice_info = voice_management.get_voice_info_from_name(actor)     
@@ -338,6 +517,13 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language,
         voice_info = voice_management.get_voice_info_from_name(actor)
         gpt_path = voice_info['gpt_path']
         change_gpt_weights(actor, gpt_path)
+    
+    # 캐시 hit - 최근 사용으로 업데이트
+    vq_model = vq_models.get(actor)
+    t2s_model = t2s_models.get(actor)
+    
+    # 로그 기록
+    log_cache_access(actor)
 
     if prompt_text is None or len(prompt_text) == 0:
         ref_free = True
@@ -373,7 +559,7 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language,
             ].transpose(
                 1, 2
             )  # .float()
-            codes = vq_models[actor].extract_latent(ssl_content)
+            codes = vq_model.extract_latent(ssl_content)
             prompt_semantic = codes[0, 0]
             prompt = prompt_semantic.unsqueeze(0).to(device)
         
@@ -415,7 +601,7 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language,
             pred_semantic=cache[i_text]
         else:
             with torch.no_grad():
-                pred_semantic, idx = t2s_models[actor].model.infer_panel(  # GPT weights
+                pred_semantic, idx = t2s_model.model.infer_panel(  # GPT weights
                     all_phoneme_ids,
                     all_phoneme_len,
                     None if ref_free else prompt,
@@ -443,7 +629,7 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language,
                     traceback.print_exc()
         if(len(refers)==0):refers = [get_spepc(hps, ref_wav_path).to(dtype).to(device)]
 
-        audio = (vq_models[actor].decode(pred_semantic, torch.LongTensor(phones2).to(device).unsqueeze(0), refers,speed=speed).detach().cpu().numpy()[0, 0])
+        audio = (vq_model.decode(pred_semantic, torch.LongTensor(phones2).to(device).unsqueeze(0), refers,speed=speed).detach().cpu().numpy()[0, 0])
         max_audio=np.abs(audio).max()  # 16비트 폭음 간단 방지
         if max_audio>1:audio/=max_audio
         audio_opt.append(audio)
@@ -511,6 +697,11 @@ def load_longtensor_from_json(path: str) -> torch.LongTensor:
 def save_phones_and_bert(ref_wav_path, prompt_text, prompt_language, actor='arona'):
     is_half = False
     
+    # 캐시에서 모델 조회
+    vq_model = vq_models.get(actor)
+    if vq_model is None:
+        raise ValueError(f"Model for actor {actor} not loaded")
+    
     prompt_text = prompt_text.strip("\n")
     if (prompt_text[-1] not in splits): prompt_text += "。" if prompt_language != "en" else "."
     
@@ -537,7 +728,7 @@ def save_phones_and_bert(ref_wav_path, prompt_text, prompt_language, actor='aron
         ].transpose(
             1, 2
         )  # .float()
-        codes = vq_models[actor].extract_latent(ssl_content)
+        codes = vq_model.extract_latent(ssl_content)
         prompt_semantic = codes[0, 0]
         prompt = prompt_semantic.unsqueeze(0).to(device)
         print('prompt', prompt)

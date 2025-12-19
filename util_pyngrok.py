@@ -13,7 +13,7 @@ def start_ngrok(id='temp', key=""):
     try:
         # ngrok 터널 생성
         ngrok.set_auth_token(key) 
-        http_tunnel = ngrok.connect(5000)  # Flask 서버의 포트를 연결
+        http_tunnel = ngrok.connect(5010)  # Flask 서버의 포트를 연결
         print(f"ngrok public URL: {http_tunnel.public_url}")
         util_supabase.post_ngrok_path(http_tunnel.public_url, status="open", id=id)
         # return http_tunnel.public_url  # 어디서 쓸것 같지는 않은데...
