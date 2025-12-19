@@ -503,10 +503,9 @@ def merge_short_text_in_array(texts, threshold):
     return result
 
 
-cache= {}
 tts_idx = 0  # 전송중 파일 생성으로 인한 충돌 방지용
 def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language, top_k=15, top_p=1, temperature=1, ref_free =False, speed=1, if_freeze=False,inp_refs=None, actor='arona'):
-    global cache, tts_idx
+    global tts_idx
     
     # 캐릭터가 없는 경우 모델 로딩
     if actor not in vq_models:
@@ -597,27 +596,23 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language,
         bert = bert.to(device).unsqueeze(0)
         all_phoneme_len = torch.tensor([all_phoneme_ids.shape[-1]]).to(device)
  
-        if(i_text in cache and if_freeze==True):
-            pred_semantic=cache[i_text]
-        else:
-            with torch.no_grad():
-                pred_semantic, idx = t2s_model.model.infer_panel(  # GPT weights
-                    all_phoneme_ids,
-                    all_phoneme_len,
-                    None if ref_free else prompt,
-                    bert,
-                    # prompt_phone_len=ph_offset,
-                    top_k=top_k,
-                    top_p=top_p,
-                    temperature=temperature,
-                    early_stop_num=hz * max_sec,  # 1500
-                    # early_stop_num=600,
-                )
-                # print('#####', pred_semantic)
-                if idx==0:
-                    return 'early stop'
-                pred_semantic = pred_semantic[:, -idx:].unsqueeze(0)
-                cache[i_text]=pred_semantic
+        with torch.no_grad():
+            pred_semantic, idx = t2s_model.model.infer_panel(  # GPT weights
+                all_phoneme_ids,
+                all_phoneme_len,
+                None if ref_free else prompt,
+                bert,
+                # prompt_phone_len=ph_offset,
+                top_k=top_k,
+                top_p=top_p,
+                temperature=temperature,
+                early_stop_num=hz * max_sec,  # 1500
+                # early_stop_num=600,
+            )
+            # print('#####', pred_semantic)
+            if idx==0:
+                return 'early stop'
+            pred_semantic = pred_semantic[:, -idx:].unsqueeze(0)
 
         refers=[]
         if(inp_refs):
